@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "thirtycli"
-version = "0.14.0"
+version = "0.15.0"
 description = "ThirtyCLI — a compact terminal agent built on LangChain, in the ThirtyCLI theme."
 readme = "README.md"
 requires-python = ">=3.10"

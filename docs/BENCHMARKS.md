@@ -22,7 +22,7 @@ thirtycli bench leaderboard
 
 | Suite | What it measures | Needs a model? |
 |---|---|---|
-| `coding` | real repository tasks: broken code plus a failing test that must pass | yes |
+| `coding` | 13 real repository tasks: three tiny ones plus ten repo-level tasks (bug fix, feature, API, unit-test writing, refactoring, debugging, multi-file) | yes |
 | `cost` | token usage and estimated cost of the first coding task | yes |
 | `agents` | scheduler mechanics: parallel speedup, dependency order, conflict denial, verification gate, retry recovery, cancellation | no |
 | `performance` | startup latency, import latency, tool latency, memory and CPU of the current process | no |
@@ -44,6 +44,7 @@ never invented:
 
 | Dataset | Where to put it | Format |
 |---|---|---|
+| `repo` (built in) | ships with the package, nothing to install | 10 tasks with initial snapshots and pytest checks |
 | HumanEval | `~/.thirtycli/benchmarks/data/humaneval.jsonl` | one JSON object per line (`task_id`, `prompt`, `test`, `entry_point`) |
 | MBPP | `~/.thirtycli/benchmarks/data/mbpp.jsonl` | one JSON object per line (`task_id`, `text`, `test_list`) |
 | SWE-bench | directory in `THIRTYCLI_BENCH_SWEBENCH_DIR` | installed harness layout |
@@ -104,13 +105,34 @@ Run more than one trial to see variance:
 thirtycli bench run agents --trials 3 --concurrency 3
 ```
 
+## Multi-agent scaling
+
+`bench multi-agent` measures scheduling, not model quality: a fixed 8-task DAG (six
+independent writes, one join, one final) runs once per worker count with the same
+model and provider, each in a fresh workspace.
+
+```sh
+thirtycli bench multi-agent --workers 1,2,4,6 --timeout 600
+```
+
+Columns: wall time, tasks completed, speedup against the 1-worker point, utilization
+(sum of task durations divided by wall time times workers, clamped to 1), conflicts,
+verification failures, tokens and cost. The JSON copy is written to
+`~/.thirtycli/benchmarks/scaling/scaling-<timestamp>.json`. Speedup plateaus when the
+DAG has a serial join or when each worker turn is a single synchronous model call;
+the harness reports what it measured and never smooths it.
+
+Token totals cover sub-agent turns only; the final merge call is not counted, and the
+command prints that note so the number is not mistaken for a full billing figure.
+
 ## Storage
 
 ```
 ~/.thirtycli/benchmarks/
-  runs/<run-id>.json    one file per suite run (secrets redacted)
-  data/                 optional public datasets
-  work/                 disposable workspaces, removed after each task
+  runs/<run-id>.json          one file per suite run (secrets redacted)
+  scaling/scaling-<ts>.json   one file per multi-agent scaling report
+  data/                       optional public datasets
+  work/                       disposable workspaces, removed after each task
 ```
 
 Set `THIRTYCLI_BENCH_KEEP=1` to keep the workspaces of the current run for debugging.
@@ -149,3 +171,18 @@ Warnings go inside the JSON (not to stdout as prose) so scripts can parse it.
 - It does not claim a competitor ran unless the adapter actually executed.
 - It does not produce a single "score" that hides which axis improved.
 - It does not run benchmarks inside your project or against your real repository.
+
+## Live validation
+
+Live tests are opt-in and read a key from the environment or from
+`thirtycli config set api_key`:
+
+```sh
+THIRTYCLI_LIVE=1 THIRTYCLI_PROVIDER=deepseek THIRTYCLI_MODEL=deepseek-chat \
+  pytest tests/test_live.py tests/test_live_orchestrator.py -q
+```
+
+They call the real provider, stream real chunks, run a read-only orchestrator, and
+exercise a coding worker that must edit a file, pass `pytest`, be `verified` by the
+independent verifier, and report non-zero token usage. See
+`docs/implementation/PHASE4_VALIDATION.md` for the measured runs.

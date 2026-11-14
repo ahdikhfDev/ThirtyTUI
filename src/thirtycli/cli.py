@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sys
+import tempfile
+import time
 from importlib import metadata
 from pathlib import Path
 from typing import Annotated
@@ -746,6 +749,70 @@ def bench_run(
     for run in runs:
         ui.console.print(render_run(run))
         ui.info(f"saved: {runs_dir() / (run.run_id + '.json')}")
+
+
+@bench_app.command("multi-agent")
+def bench_multi_agent(
+    workers: Annotated[
+        str, typer.Option("--workers", help="Comma separated worker counts, e.g. 1,2,4,6.")
+    ] = "1,2,4,6",
+    timeout: Annotated[
+        int, typer.Option("--timeout", help="Wall timeout per worker-count point, in seconds.")
+    ] = 900,
+    model: Annotated[str, typer.Option("--model", "-m")] = "",
+    provider: Annotated[str, typer.Option("--provider", "-p")] = "",
+    keep: Annotated[bool, typer.Option("--keep", help="Keep the disposable workspaces.")] = False,
+    json_out: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """Measure the fixed 8-task DAG at 1, 2, 4 and 6 workers with a real model."""
+    from .benchmarks.scaling import render_scaling, render_scaling_json, run_scaling
+
+    try:
+        counts = sorted({int(part.strip()) for part in workers.split(",") if part.strip()})
+    except ValueError:
+        _fail("--workers must be a comma separated list of integers, e.g. 1,2,4,6")
+    if not counts or any(count < 1 for count in counts):
+        _fail("--workers must contain positive integers")
+
+    cfg = _prepare(load(), provider, model)
+    try:
+        llm = build_model(cfg)
+    except ModelError as exc:
+        _fail(f"multi-agent benchmark needs a model: {exc}")
+
+    root = Path(tempfile.mkdtemp(prefix="thirtycli-scaling-"))
+    try:
+        report = run_scaling(
+            llm,
+            root,
+            workers=counts,
+            timeout=timeout,
+            keep=keep,
+            model_name=cfg.model,
+            provider=cfg.provider,
+        )
+    finally:
+        if not keep:
+            shutil.rmtree(root, ignore_errors=True)
+
+    payload = render_scaling_json(report)
+
+    from .benchmarks.storage import bench_dir
+
+    target = bench_dir() / "scaling" / f"scaling-{time.strftime('%Y%m%d-%H%M%S')}.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    if json_out:
+        ui.console.print(json.dumps(payload, indent=2, ensure_ascii=False))
+        ui.info(f"saved: {target}")
+        return
+    ui.console.print(render_scaling(report))
+    ui.info(f"saved: {target}")
+    if keep:
+        ui.info(f"workspaces: {root}")
+    for note in report.notes:
+        ui.info(note)
 
 
 @bench_app.command("compare")

@@ -14,7 +14,7 @@ from thirtycli.benchmarks.datasets import (
 )
 from thirtycli.benchmarks.storage import data_dir
 
-KNOWN = {"internal", "humaneval", "mbpp", "swebench", "terminalbench", "polyglot"}
+KNOWN = {"internal", "repo", "humaneval", "mbpp", "swebench", "terminalbench", "polyglot"}
 
 
 @pytest.fixture(autouse=True)
@@ -52,8 +52,17 @@ def test_datasets_describes_every_known_dataset():
     assert infos["internal"].available is True
     assert infos["internal"].task_count == 3
     assert infos["internal"].reason
+    assert infos["repo"].available is True
+    assert infos["repo"].task_count == 10
+    assert infos["repo"].source == "builtin"
+    assert infos["repo"].license == "MIT"
     assert infos["humaneval"].available is False
     assert infos["mbpp"].available is False
+
+
+def test_repo_dataset_sits_next_to_internal():
+    names = [info.name for info in datasets()]
+    assert names[:2] == ["internal", "repo"]
 
 
 def test_internal_tasks_are_real_repo_tasks():

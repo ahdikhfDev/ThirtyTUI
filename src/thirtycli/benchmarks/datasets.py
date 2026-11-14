@@ -1,9 +1,9 @@
 """Benchmark datasets: a small internal coding suite plus optional public ones.
 
-Only the internal suite ships with the package, and its tasks are real: each
-one is a tiny repository with a failing test that a coding agent has to fix.
-The public datasets are never fabricated. HumanEval and MBPP are read from
-files the user placed in ``~/.thirtycli/benchmarks/data``; SWE-bench,
+Only the internal and repository suites ship with the package, and their tasks
+are real: each one is a tiny repository with a failing test that a coding agent
+has to fix. The public datasets are never fabricated. HumanEval and MBPP are
+read from files the user placed in ``~/.thirtycli/benchmarks/data``; SWE-bench,
 Terminal-Bench and Polyglot are read from an installed directory. When they are
 missing or unusable, they report themselves as unavailable instead of inventing
 tasks, and the harnesses here are a convenience, not the official evaluation
@@ -23,15 +23,17 @@ from .models import TaskSpec
 from .storage import data_dir
 
 INTERNAL = "internal"
+REPO = "repo"
 HUMANEVAL = "humaneval"
 MBPP = "mbpp"
 OFFICIAL = ("swebench", "terminalbench", "polyglot")
-KNOWN = (INTERNAL, HUMANEVAL, MBPP, *OFFICIAL)
+KNOWN = (INTERNAL, REPO, HUMANEVAL, MBPP, *OFFICIAL)
 
 # Upstream release metadata, included for provenance only. Check the upstream
 # repository before redistributing or quoting these numbers as authoritative.
 META = {
     INTERNAL: ("builtin", "thirtycli", "MIT"),
+    REPO: (f"thirtycli-{__version__}", "builtin", "MIT"),
     HUMANEVAL: ("1.0", "openai/human-eval", "MIT"),
     MBPP: ("sanitized", "google-research/google-research", "CC-BY-4.0"),
     "swebench": ("2.0", "princeton-nlp/SWE-bench", "MIT"),
@@ -76,6 +78,8 @@ def load_dataset(name: str) -> list[TaskSpec]:
         raise DatasetUnavailable(f"unknown dataset '{name}' (known: {', '.join(KNOWN)})")
     if key == INTERNAL:
         return internal_tasks()
+    if key == REPO:
+        return repo_tasks()
     if key == HUMANEVAL:
         return _load_humaneval()
     if key == MBPP:
@@ -180,6 +184,8 @@ def _meta(name: str) -> tuple[str, str, str]:
 def _info_for(name: str) -> DatasetInfo:
     if name == INTERNAL:
         return _internal_info()
+    if name == REPO:
+        return _repo_info()
     if name == HUMANEVAL:
         return _humaneval_info()
     if name == MBPP:
@@ -198,6 +204,29 @@ def _internal_info() -> DatasetInfo:
         available=True,
         reason="built-in suite; no download needed",
         task_count=len(tasks),
+    )
+
+
+# -- built-in repository suite ------------------------------------------------
+
+
+def repo_tasks() -> list[TaskSpec]:
+    """The built-in repository suite; imported lazily to keep this module light."""
+    from .repotasks import repo_tasks as build
+
+    return build()
+
+
+def _repo_info() -> DatasetInfo:
+    version, source, license = META[REPO]
+    return DatasetInfo(
+        name=REPO,
+        version=version,
+        source=source,
+        license=license,
+        available=True,
+        reason="built-in repository suite; no download needed",
+        task_count=len(repo_tasks()),
     )
 
 

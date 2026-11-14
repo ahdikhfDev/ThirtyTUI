@@ -14,7 +14,7 @@ import pytest
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-from thirtycli.config import Config
+from thirtycli.config import Config, load
 from thirtycli.models import api_key_for, build_model
 
 pytestmark = [
@@ -32,8 +32,12 @@ MODEL = os.environ.get("THIRTYCLI_LIVE_MODEL", "deepseek-chat")
 def _live_model():
     """Build the configured model, or skip when there is no key for it."""
     cfg = Config(provider=PROVIDER, model=MODEL)
+    saved = load()
+    if saved.provider == PROVIDER:
+        cfg.api_key = saved.api_key
+        cfg.base_url = saved.base_url
     if api_key_for(PROVIDER, cfg) is None:
-        pytest.skip(f"{PROVIDER}: no API key in the environment (set it or use another provider)")
+        pytest.skip(f"{PROVIDER}: no API key in the environment or config (set it or use another provider)")
     return build_model(cfg)
 
 

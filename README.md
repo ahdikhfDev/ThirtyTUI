@@ -4,7 +4,7 @@ A compact terminal agent built on LangChain, wearing the ThirtyCLI theme:
 orange `#FFB547` mark, `>_` prompt, dark panels.
 
 ```
- ▄▄▄▄▄▄▄▄▄   ThirtyCLI 0.14.0
+ ▄▄▄▄▄▄▄▄▄   ThirtyCLI 0.15.0
  █       █   openai · gpt-4o-mini
  █ ●   ● █   session 3f9a · 0 messages
  █  >_   █   /help for commands
@@ -93,6 +93,8 @@ Keys are never echoed back: `config show`, `doctor`, tool output, diffs, errors 
 | `memory list` / `add` / `search` / `edit` / `rm` | project-scoped persistent notes |
 | `bench list` | benchmark suites, datasets and CLI adapters on this machine |
 | `bench run all` / `run agents` | real benchmark run in a disposable workspace, persisted as JSON |
+| `bench run coding` | 3 tiny tasks + 10 repository-level tasks with pytest checks |
+| `bench multi-agent` | fixed 8-task DAG measured at 1, 2, 4 and 6 workers |
 | `bench history` / `report <run>` | saved runs and a full report (markdown, table or JSON) |
 | `bench compare` / `leaderboard` | side-by-side runs and a ranked table, no composite score |
 | `config show` / `set` / `path` | read and write `~/.thirtycli/config.toml` |
@@ -302,6 +304,10 @@ thirtycli bench compare <run-a> <run-b>       # side by side, warns when configs
 Six suites: `coding`, `agents`, `performance`, `cost`, `reliability`, `security`.
 Coding tasks need a model; agents/performance/reliability/security run offline and
 exercise the real scheduler, permission policy, change tracker and sandbox helpers.
+`coding` now runs 13 tasks: three tiny ones plus ten repository-level tasks (bug fix,
+feature, API, unit-test writing, refactoring, debugging, multi-file).
+`bench multi-agent --workers 1,2,4,6` measures the same 8-task DAG at each worker
+count and persists its JSON under `~/.thirtycli/benchmarks/scaling/`.
 Skipped work is reported as skipped with a reason, never counted as a pass. There is
 no invented composite score, no fabricated pricing and no claim that another CLI was
 tested unless its adapter actually executed.
