@@ -4,7 +4,7 @@ A compact terminal agent built on LangChain, wearing the ThirtyCLI theme:
 orange `#FFB547` mark, `>_` prompt, dark panels.
 
 ```
- ▄▄▄▄▄▄▄▄▄   ThirtyCLI 0.13.0
+ ▄▄▄▄▄▄▄▄▄   ThirtyCLI 0.14.0
  █       █   openai · gpt-4o-mini
  █ ●   ● █   session 3f9a · 0 messages
  █  >_   █   /help for commands
@@ -91,6 +91,10 @@ Keys are never echoed back: `config show`, `doctor`, tool output, diffs, errors 
 | `tasks list` / `tasks show <run>` | saved runs, dependencies, verification, conflicts |
 | `trace list` / `trace show <run>` | structured event traces (JSONL) |
 | `memory list` / `add` / `search` / `edit` / `rm` | project-scoped persistent notes |
+| `bench list` | benchmark suites, datasets and CLI adapters on this machine |
+| `bench run all` / `run agents` | real benchmark run in a disposable workspace, persisted as JSON |
+| `bench history` / `report <run>` | saved runs and a full report (markdown, table or JSON) |
+| `bench compare` / `leaderboard` | side-by-side runs and a ranked table, no composite score |
 | `config show` / `set` / `path` | read and write `~/.thirtycli/config.toml` |
 | `sessions list` / `show` / `rename` / `rm` | saved conversations; rename keeps the transcript |
 | `tools` | local tools the model can call |
@@ -281,6 +285,31 @@ thirtycli memory search auth
 thirtycli memory list
 ```
 
+## Benchmarks
+
+`thirtycli bench` measures the CLI instead of describing it. Every task runs in a
+throwaway workspace, is checked against real files and a real test command, and is
+stored in `~/.thirtycli/benchmarks/runs/<run-id>.json`.
+
+```sh
+thirtycli bench list                          # suites, datasets, adapters
+thirtycli bench run agents                    # scheduler mechanics, no model needed
+thirtycli bench run all                       # every suite; unavailable parts skip honestly
+thirtycli bench report <run-id>               # markdown report
+thirtycli bench compare <run-a> <run-b>       # side by side, warns when configs differ
+```
+
+Six suites: `coding`, `agents`, `performance`, `cost`, `reliability`, `security`.
+Coding tasks need a model; agents/performance/reliability/security run offline and
+exercise the real scheduler, permission policy, change tracker and sandbox helpers.
+Skipped work is reported as skipped with a reason, never counted as a pass. There is
+no invented composite score, no fabricated pricing and no claim that another CLI was
+tested unless its adapter actually executed.
+
+Full details, dataset install paths and the external adapter variables
+(`THIRTYCLI_BENCH_AIDER_CMD`, `THIRTYCLI_BENCH_OPENCODE_CMD`,
+`THIRTYCLI_BENCH_CLAUDE_CMD`) are in [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
+
 ## TUI mode
 
 ```sh
@@ -382,6 +411,7 @@ ruff check src tests
 #   docs/architecture/CURRENT_STATE.md
 #   docs/architecture/TARGET_ARCHITECTURE.md
 #   docs/architecture/IMPLEMENTATION_ROADMAP.md
+#   docs/BENCHMARKS.md
 
 # visual QA: renders the real prompt_toolkit screen to docs/*.png (needs pillow)
 .venv/Scripts/python tools/tui_snapshot.py

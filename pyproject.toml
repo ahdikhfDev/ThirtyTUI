@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "thirtycli"
+version = "0.14.0"
+description = "ThirtyCLI — a compact terminal agent built on LangChain, in the ThirtyCLI theme."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "langchain-core>=0.3",
+    "langchain-openai>=0.3",
+    "typer>=0.12",
+    "rich>=13",
+    "prompt_toolkit>=3.0",
+    "certifi>=2023.7",
+    "pygments>=2.10",
+]
+
+[project.optional-dependencies]
+anthropic = ["langchain-anthropic>=0.3"]
+google = ["langchain-google-genai>=2"]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+thirtycli = "thirtycli.cli:main"
+thirty = "thirtycli.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/thirtycli"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "live: calls a real model provider; needs THIRTYCLI_LIVE=1 and an API key",
+]
+
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+select = ["F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/thirtycli/cli.py" = ["B008"]  # typer arguments are declared as calls by design
